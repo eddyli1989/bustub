@@ -30,7 +30,7 @@ class LRUKNode {
   std::list<size_t> history_;
   [[maybe_unused]] size_t k_;
   [[maybe_unused]] frame_id_t fid_;
-  [[maybe_unused]] bool is_evictable_{false};
+  bool is_evictable_{false};
 
  public:
   LRUKNode(size_t k, frame_id_t fid);
@@ -44,7 +44,7 @@ class LRUKNode {
 };
 
 /**
- * LRUKReplacer implements the LRU-k replacement policy.
+  LRUKReplacer implements the LRU-k replacement policy.
  *
  * The LRU-k algorithm evicts a frame whose backward k-distance is maximum
  * of all frames. Backward k-distance is computed as the difference in time between

@@ -17,16 +17,14 @@ namespace bustub {
 
 LRUKNode::LRUKNode(size_t k, frame_id_t fid) : k_(k), fid_(fid) {}
 
-void LRUKNode::SetEvictable(bool evictable) { throw NotImplementedException("SetEvictable not implemented"); }
+void LRUKNode::SetEvictable(bool evictable) { is_evictable_ = evictable; }
 
 auto LRUKNode::IsEvictable() -> bool {
-  throw NotImplementedException("IsEvictable not implemented");
-  return false;
+  return is_evictable_;
 }
 
 auto LRUKNode::GetFid() -> frame_id_t {
-  throw NotImplementedException("GetFid not implemented");
-  return 0;
+  return fid_;
 }
 
 auto LRUKNode::GetBackwardKDist(size_t current_timestamp) -> size_t {
