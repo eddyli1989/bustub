@@ -33,7 +33,7 @@ auto LRUKNode::GetBackwardKDist(size_t current_timestamp) -> size_t {
 }
 
 auto LRUKNode::HasInfBackwardKDist() -> bool {
-  return history_.size() <= k_;
+  return history_.size() < k_;
 }
 
 auto LRUKNode::GetEarliestTimestamp() -> size_t {
@@ -56,13 +56,13 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool
     bool has_inf = false;
     size_t inf_max = 0;
     frame_id_t evict_frame_id = -1;
-    current_timestamp_ = std::time(0);
+  
     for (auto & node : node_store_) {
         if (!node.second.IsEvictable()) continue;
         if (node.second.HasInfBackwardKDist()) {
             has_inf = true;
             auto dist = current_timestamp_ - node.second.GetEarliestTimestamp(); // todo??
-            if (dist > inf_max) {
+            if (dist >= inf_max) {
                 inf_max = dist;
                 evict_frame_id = node.first;
             }
@@ -70,12 +70,13 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool
         }
         if (has_inf) continue;
         auto dist = node.second.GetBackwardKDist(current_timestamp_);
-        if (dist > max_dist) {
+        if (dist >= max_dist) {
             max_dist = dist;
             evict_frame_id = node.first;
         }
     }
     if (evict_frame_id != -1) {
+        *frame_id = evict_frame_id;
         Remove(evict_frame_id);
         return true;
     }
@@ -84,7 +85,7 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool
 
 void LRUKReplacer::RecordAccess(frame_id_t frame_id) 
 {
-    BUSTUB_ASSERT(frame_id < replacer_size_, "invalid frame_id");
+    BUSTUB_ASSERT(static_cast<size_t>(frame_id) < replacer_size_, "invalid frame_id");
     auto it = node_store_.find(frame_id);
     if (it == node_store_.end()) {
         if (node_store_.size() >= replacer_size_) {
@@ -93,12 +94,13 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id)
             if (!evict) return;
         }
         LRUKNode node(k_, frame_id);
-        node.InsertHistoryTimestamp(current_timestamp_);
-        node_store_[frame_id] = node;
-        curr_size_++;
+        node.InsertHistoryTimestamp(current_timestamp_++);
+        node_store_.insert(std::make_pair(frame_id,node));
+        //node_store_[frame_id] = node;
+        //curr_size_++;
         return;
     }
-    it->second.InsertHistoryTimestamp(current_timestamp_);
+    it->second.InsertHistoryTimestamp(current_timestamp_++);
 }
 
 void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) 
@@ -114,7 +116,7 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable)
 
 void LRUKReplacer::Remove(frame_id_t frame_id) 
 {
-    BUSTUB_ASSERT(frame_id < replacer_size_, "invalid frame_id");
+    BUSTUB_ASSERT(static_cast<size_t>(frame_id) < replacer_size_, "invalid frame_id");
     //BUSTUB_ASSERT(curr_size_ > 0, "invalid size when remove");
     auto it = node_store_.find(frame_id);
     if(it == node_store_.end()) {
