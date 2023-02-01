@@ -38,13 +38,42 @@ BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager
 
 BufferPoolManager::~BufferPoolManager() { delete[] pages_; }
 
-auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * { return nullptr; }
+auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * { 
+    // lock
+    // check free list size,if no free, evict,if failed, return null
+    // alloc page id to page_id
+    // remove from free list 
+    // replacer_.RecordAccess and SetEvictable false
+    // map page_id and frame_id
+    // init page(reset mem and metadata)
+    // add the page ref count?
+    // return the page
+    return nullptr; 
+}
 
-auto BufferPoolManager::FetchPage(page_id_t page_id) -> Page * { return nullptr; }
+auto BufferPoolManager::FetchPage(page_id_t page_id) -> Page * { 
+    // lock
+    // check free list size,if no free ,evict,if failed,return null
+    // DiskManager::ReadPage()
+    // get free frame_id and map to page_id,remove from free_list
+    // replacer_.RecordAccess and SetEvictable false
+    // add the page ref count?
+    // return the readed page
+    return nullptr; 
+}
 
-auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) -> bool { return false; }
+auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) -> bool {
+    // if is_dirty, flush
+    // replacer_.set evicbal = false
+    // minus the page ref count?
+    return false; 
+}
 
-auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool { return false; }
+auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool { 
+    // DiskManager::WritePage()
+    // set dirty flag 2 false
+    return false; 
+}
 
 void BufferPoolManager::FlushAllPages() {}
 
