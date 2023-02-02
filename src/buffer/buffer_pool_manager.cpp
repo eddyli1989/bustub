@@ -39,6 +39,35 @@ BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager
 BufferPoolManager::~BufferPoolManager() { delete[] pages_; }
 
 auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * { 
+    const std::lock_guard<std::mutex> lock(latch_);
+    frame_id_t* free_frame_id = nullptr;
+    if (free_list_.empty()) {
+        auto evcit_ret = replacer_->Evict(free_frame_id);
+        if (!evcit_ret) return nullptr;
+    } else {
+        free_frame_id = &free_list_.front();
+        free_list_.pop_front();
+    }
+   
+    Page* page = &pages_[*free_frame_id];
+    if (page->IsDirty()) {
+        FlushPage(page->GetPageId());
+    }
+
+    if (page->GetPageId() != INVALID_PAGE_ID) {
+        page_table_.erase(page->GetPageId());
+    }
+    
+    page->ResetMemory();
+    auto allocated_page_id = AllocatePage();
+    page->page_id_ = allocated_page_id;
+    page->pin_count_ = 1;
+    page->is_dirty_ = false;
+    page_table_[allocated_page_id] = *free_frame_id;
+    *page_id = allocated_page_id;
+    replacer_->RecordAccess(*free_frame_id);
+    replacer_->SetEvictable(*free_frame_id, false);
+    return page;
     // lock
     // check free list size,if no free, evict,if failed, return null
     // alloc page id to page_id
@@ -48,7 +77,6 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
     // init page(reset mem and metadata)
     // add the page ref count?
     // return the page
-    return nullptr; 
 }
 
 auto BufferPoolManager::FetchPage(page_id_t page_id) -> Page * { 
@@ -59,7 +87,37 @@ auto BufferPoolManager::FetchPage(page_id_t page_id) -> Page * {
     // replacer_.RecordAccess and SetEvictable false
     // add the page ref count?
     // return the readed page
-    return nullptr; 
+    const std::lock_guard<std::mutex> lock(latch_);   
+    auto page = GetPage(page_id);
+    if (page != nullptr) return page;
+    // not in memory, read from disk
+    frame_id_t* free_frame_id = nullptr;
+  
+    if (free_list_.empty()) {
+        auto evcit_ret = replacer_->Evict(free_frame_id);
+        if (!evcit_ret) return nullptr;
+    } else {
+        free_frame_id = &free_list_.front();
+        free_list_.pop_front();
+    }
+
+    page = &pages_[*free_frame_id];
+    if (page->IsDirty()) {
+        FlushPage(page->GetPageId()); // todo dead lock?
+    }
+
+    if (page->GetPageId() != INVALID_PAGE_ID) {
+        page_table_.erase(page->GetPageId());
+    }
+    page->page_id_ = page_id;
+    page->pin_count_ = 1;
+    page->is_dirty_ = false;
+    page_table_[page_id] = *free_frame_id;
+    page->ResetMemory();
+    replacer_->RecordAccess(*free_frame_id);
+    replacer_->SetEvictable(*free_frame_id, false);
+    disk_manager_->ReadPage(page_id, page->GetData());
+    return page; 
 }
 
 auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) -> bool {
@@ -69,13 +127,27 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) -> bool {
     return false; 
 }
 
-auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool { 
-    // DiskManager::WritePage()
-    // set dirty flag 2 false
-    return false; 
+Page* BufferPoolManager::GetPage(page_id_t page_id) {
+    if (page_id == INVALID_PAGE_ID) return nullptr;
+    auto it = page_table_.find(page_id);
+    if (it == page_table_.end()) return nullptr;
+    return &pages_[it->second];
 }
 
-void BufferPoolManager::FlushAllPages() {}
+auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
+    const std::lock_guard<std::mutex> lock(latch_);
+    Page* page = GetPage(page_id);
+    if (page == nullptr) return false;
+    disk_manager_->WritePage(page_id, page->GetData());
+    page->is_dirty_ = false;
+    return true; 
+}
+
+void BufferPoolManager::FlushAllPages() {
+    for (auto &it : page_table_) {
+        FlushPage(it.first);
+    }
+}
 
 auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool { return false; }
 

@@ -43,7 +43,7 @@ void LRUKNode::InsertHistoryTimestamp(size_t current_timestamp) {
 }
 
 LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : replacer_size_(num_frames), k_(k) {}
-
+//  todo lock
 auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   size_t max_dist = 0;
   bool has_inf = false;
