@@ -206,6 +206,5 @@ class BufferPoolManager {
   }
 
   Page* GetPage(page_id_t page_id);
-  // TODO(student): You may add additional private members and helper functions
 };
 }  // namespace bustub
