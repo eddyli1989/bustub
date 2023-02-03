@@ -41,9 +41,11 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
     if (free_list_.empty()) {
         auto evcit_ret = replacer_->Evict(&free_frame_id);
         if (!evcit_ret) return nullptr;
+        LOG_DEBUG("free_list_ is empty, evcit:%d",  free_frame_id);
     } else {
         free_frame_id = free_list_.front();
         free_list_.pop_front();
+        LOG_DEBUG("free_list_ is not empty, size: %d, free_frame_id:%d", free_list_.size(), free_frame_id);
     }
     BUSTUB_ASSERT(free_frame_id >=0 && free_frame_id < (int)pool_size_, "invalid frame_id");
    
@@ -59,7 +61,7 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
     
     page->ResetMemory();
     auto allocated_page_id = AllocatePage();
-    LOG_DEBUG("Allocated page:%d",  allocated_page_id);
+    LOG_DEBUG("Allocated page_id:%d",  allocated_page_id);
     page->page_id_ = allocated_page_id;
     page->pin_count_ = 1; // todo ?
     page->is_dirty_ = false;
