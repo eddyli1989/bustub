@@ -23,6 +23,8 @@
 
 namespace bustub {
 
+enum class AccessType { Unknown = 0, Get, Scan };
+
 class LRUKNode {
  private:
   /** History of last seen K timestamps of this page. Least recent timestamp stored in front. */
@@ -102,8 +104,10 @@ class LRUKReplacer {
    * also use BUSTUB_ASSERT to abort the process if frame id is invalid.
    *
    * @param frame_id id of frame that received a new access.
+   * @param access_type type of access that was received. This parameter is only needed for
+   * leaderboard tests.
    */
-  void RecordAccess(frame_id_t frame_id);
+  void RecordAccess(frame_id_t frame_id, AccessType access_type = AccessType::Unknown);
 
   /**
    * TODO(P1): Add implementation
