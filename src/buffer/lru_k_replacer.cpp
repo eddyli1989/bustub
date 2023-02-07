@@ -79,7 +79,7 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   return false;
 }
 
-void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
+void LRUKReplacer::RecordAccess(frame_id_t frame_id, AccessType access_type) {
   BUSTUB_ASSERT(static_cast<size_t>(frame_id) < replacer_size_, "invalid frame_id");
   const std::lock_guard<std::mutex> lock(latch_);
   auto it = node_store_.find(frame_id);

@@ -71,7 +71,7 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
   return page;
 }
 
-auto BufferPoolManager::FetchPage(page_id_t page_id) -> Page * {
+auto BufferPoolManager::FetchPage(page_id_t page_id, AccessType access_type) -> Page * {
   const std::lock_guard<std::mutex> lock(latch_);
   auto page = GetPage(page_id);
   if (page != nullptr) return page;
@@ -105,7 +105,7 @@ auto BufferPoolManager::FetchPage(page_id_t page_id) -> Page * {
   return page;
 }
 
-auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) -> bool {
+auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, AccessType access_type) -> bool {
   const std::lock_guard<std::mutex> lock(latch_);
   auto page = GetPage(page_id);
   if (page == nullptr) return false;
