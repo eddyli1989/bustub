@@ -39,7 +39,7 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
   frame_id_t free_frame_id = -1;
   if (free_list_.empty()) {
     auto evcit_ret = replacer_->Evict(&free_frame_id);
-    if (!evcit_ret) return nullptr;
+    if (!evcit_ret) { return nullptr;}
     LOG_DEBUG("free_list_ is empty, evcit:%d", free_frame_id);
   } else {
     free_frame_id = free_list_.front();
@@ -50,8 +50,11 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
 
   Page *page = &pages_[free_frame_id];
   if (page->IsDirty()) {
-    LOG_DEBUG("page is dirty, write first, frame_id:%d", free_frame_id);
-    FlushPageNoLock(page->GetPageId());
+    LOG_DEBUG("page is dirty, write first, frame_id:%d, page_id:%d", free_frame_id, page->GetPageId());
+    auto flush_ret = FlushPageNoLock(page->GetPageId());
+    if (!flush_ret) {
+        LOG_ERROR("flush page failed");
+    }
   }
 
   if (page->GetPageId() != INVALID_PAGE_ID) {
@@ -74,13 +77,18 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
 auto BufferPoolManager::FetchPage(page_id_t page_id, AccessType access_type) -> Page * {
   const std::lock_guard<std::mutex> lock(latch_);
   auto page = GetPage(page_id);
-  if (page != nullptr) return page;
+  if (page != nullptr) {
+    page->pin_count_++;
+    replacer_->RecordAccess(page_table_[page_id]);
+    replacer_->SetEvictable(page_table_[page_id], false);
+    return page;
+  }
   // not in memory, read from disk
   frame_id_t free_frame_id = -1;
 
   if (free_list_.empty()) {
     auto evcit_ret = replacer_->Evict(&free_frame_id);
-    if (!evcit_ret) return nullptr;
+    if (!evcit_ret) {return nullptr;}
   } else {
     free_frame_id = free_list_.front();
     free_list_.pop_front();
@@ -108,8 +116,8 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, AccessType access_type) -> 
 auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, AccessType access_type) -> bool {
   const std::lock_guard<std::mutex> lock(latch_);
   auto page = GetPage(page_id);
-  if (page == nullptr) return false;
-  if (page->GetPinCount() == 0) return false;
+  if (page == nullptr) {return false;}
+  if (page->GetPinCount() == 0) {return false;}
   page->pin_count_--;
   page->is_dirty_ = is_dirty;
   if (page->GetPinCount() == 0) {
@@ -118,10 +126,10 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, AccessType a
   return true;
 }
 
-Page *BufferPoolManager::GetPage(page_id_t page_id) {
-  if (page_id == INVALID_PAGE_ID) return nullptr;
+auto BufferPoolManager::GetPage(page_id_t page_id) -> Page* {
+  if (page_id == INVALID_PAGE_ID) {return nullptr;}
   auto it = page_table_.find(page_id);
-  if (it == page_table_.end()) return nullptr;
+  if (it == page_table_.end()) {return nullptr;}
   return &pages_[it->second];
 }
 
@@ -132,7 +140,7 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
 
 auto BufferPoolManager::FlushPageNoLock(page_id_t page_id) -> bool {
   Page *page = GetPage(page_id);
-  if (page == nullptr) return false;
+  if (page == nullptr) {return false;}
   disk_manager_->WritePage(page_id, page->GetData());
   page->is_dirty_ = false;
   return true;
@@ -148,8 +156,8 @@ void BufferPoolManager::FlushAllPages() {
 auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
   const std::lock_guard<std::mutex> lock(latch_);
   auto page = GetPage(page_id);
-  if (page == nullptr) return true;
-  if (page->GetPinCount() != 0) return false;
+  if (page == nullptr) {return true;}
+  if (page->GetPinCount() != 0) {return false;}
   if (page->IsDirty()) {
     latch_.unlock();
     FlushPage(page_id);

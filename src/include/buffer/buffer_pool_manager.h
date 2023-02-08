@@ -207,7 +207,7 @@ class BufferPoolManager {
     // This is a no-nop right now without a more complex data structure to track deallocated pages
   }
 
-  Page *GetPage(page_id_t page_id);
+  auto GetPage(page_id_t page_id) -> Page*;
   auto FlushPageNoLock(page_id_t page_id) -> bool;
 };
 }  // namespace bustub

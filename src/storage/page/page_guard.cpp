@@ -32,7 +32,7 @@ auto BasicPageGuard::operator=(BasicPageGuard &&that) noexcept -> BasicPageGuard
   return *this;
 }
 
-BasicPageGuard::~BasicPageGuard() { Drop(); };
+BasicPageGuard::~BasicPageGuard() { Drop(); }
 
 ReadPageGuard::ReadPageGuard(ReadPageGuard &&that) noexcept {
   guard_ = std::move(that.guard_);
